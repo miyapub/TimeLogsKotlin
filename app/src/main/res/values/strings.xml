@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">柳比歇夫</string>
+    <string name="app_db_name">time_logs</string>
+</resources>
