@@ -1,8 +1,10 @@
 package org.zhudou.api.timelogskotlin
 
+import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.view.View
@@ -15,6 +17,21 @@ import kotlinx.android.synthetic.main.timelog.view.*
 
 class LogsActivity : AppCompatActivity() {
 
+    @SuppressLint("HandlerLeak")
+    var handler: Handler = object : Handler() {
+        override fun handleMessage(msg: android.os.Message) {  //这个是发送过来的消息
+            val message = this.obtainMessage()
+            val data = msg.data
+            when (msg.what) {
+                1 -> {
+                    val intent = Intent(this@LogsActivity, LogsActivity::class.java)
+                    startActivity(intent)
+                } else -> {
+            }
+            }
+            super.handleMessage(msg)
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_logs)
@@ -44,9 +61,21 @@ class LogsActivity : AppCompatActivity() {
                 R.layout.timelog, arrayOf("log_id","title","begin_time","end_time"), intArrayOf(R.id.log_id,R.id.title,R.id.begin,R.id.end))
         time_logs.adapter=simpleAdapter
         add.setOnClickListener(View.OnClickListener {
-            dbHelper.exec("insert into logs(title,begin_time,end_time,status)values('title',datetime('now','localtime'),datetime('now','localtime'),'doing')")
-            val intent = Intent(this@LogsActivity, TimeActivity::class.java)
-            startActivity(intent)
+            //
+            val alertDialogBuilder = AlertDialog.Builder(this)
+            val alertDialog = alertDialogBuilder.create()
+            var input_title=EditText(this)
+            alertDialog.setView(input_title)
+            alertDialog.setTitle("输入正在做的事情")
+            alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE,"确定", DialogInterface.OnClickListener({ dialogInterface: DialogInterface, i: Int ->
+                var str_title=input_title.text
+                dbHelper.exec("insert into logs(title,begin_time,end_time,status)values('$str_title',datetime('now','localtime'),datetime('now','localtime'),'doing')")
+                val intent = Intent(this@LogsActivity, TimeActivity::class.java)
+                startActivity(intent)
+            }))
+            alertDialog.show()
+            //
+
         })
 
         time_logs.onItemLongClickListener= AdapterView.OnItemLongClickListener { adapterView, view, i, l ->
@@ -61,7 +90,22 @@ class LogsActivity : AppCompatActivity() {
                 var str_title=input_title.text
                 dbHelper.exec("update logs set title='$str_title' where _id='$id'")
                 view.title.setText(str_title)
-                simpleAdapter.notifyDataSetChanged()
+                val message = handler.obtainMessage()
+                message.what = 1
+                //val msgData = Bundle()
+                //msgData.putString("json", result)
+                //message.data = msgData
+                message.sendToTarget()
+                //simpleAdapter.notifyDataSetChanged()
+            }))
+            alertDialog.setButton(DialogInterface.BUTTON_NEUTRAL,"删除", DialogInterface.OnClickListener({ dialogInterface: DialogInterface, i: Int ->
+                dbHelper.exec("DELETE FROM logs WHERE _id = $id")
+                val message = handler.obtainMessage()
+                message.what = 1
+                //val msgData = Bundle()
+                //msgData.putString("json", result)
+                //message.data = msgData
+                message.sendToTarget();
             }))
             alertDialog.show()
             return@OnItemLongClickListener true
